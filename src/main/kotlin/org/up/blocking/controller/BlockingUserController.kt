@@ -1,16 +1,14 @@
 package org.up.blocking.controller
 
-import org.slf4j.MDC
+import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.bind.annotation.*
 import org.up.blocking.model.UserJpa
 import org.up.blocking.repository.BlockingAvatarService
 import org.up.blocking.repository.BlockingEnrollmentService
 import org.up.blocking.repository.BlockingUserDao
-import org.up.coroutines.config.MdcWebFilter
 import org.up.utils.supplyAsync
 import org.up.utils.toNullable
 import java.util.concurrent.CompletableFuture
-import javax.transaction.Transactional
 
 @RestController
 class BlockingUserController(

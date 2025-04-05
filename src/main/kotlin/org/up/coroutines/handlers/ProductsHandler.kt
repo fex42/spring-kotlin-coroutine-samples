@@ -3,11 +3,10 @@ package org.up.coroutines.handlers
 import org.up.coroutines.model.Product
 import org.up.coroutines.repository.ProductRepositoryCoroutines
 import kotlinx.coroutines.*
-import kotlinx.coroutines.channels.BroadcastChannel
-import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.reactive.asFlow
 import kotlinx.coroutines.reactive.awaitFirst
 import org.springframework.beans.factory.annotation.Autowired
@@ -46,7 +45,7 @@ class ProductsHandler(
             webClient.get()
               .uri("/products/$id/quantity")
               .accept(MediaType.APPLICATION_JSON)
-              .awaitExchange().awaitBody<Int>()
+              .retrieve().awaitBody<Int>()
         }
         return ServerResponse.ok().json().bodyValueAndAwait(ProductStockView(product.await()!!, quantity.await()))
     }
@@ -99,24 +98,25 @@ class ProductsHandler(
 
 
 
-    private val channel = BroadcastChannel<String>(128)
+    private val channel = MutableSharedFlow<String>(0, extraBufferCapacity = 128)
+
     suspend fun produceChannel(request: ServerRequest): ServerResponse {
         val size = request.queryParam("size").map { it.toInt() }.orElse(10)
         val wait = request.queryParam("delay").map { it.toInt() }.orElse(500)
-        val close = request.queryParam("close").map { it.toBoolean() }.orElse(false)
-        if(close) channel.close() else
+        val close = request.queryParam("close").map { it == "true" }.orElse(false)
+        if(close) currentCoroutineContext().isActive else
         GlobalScope.launch {
             (1..size).forEach{
                 println("producing values $it")
                 delay(wait.toLong())
-                channel.send("channelmsg=${it.toString()}")
+                channel.emit("channelmsg=${it.toString()}")
             }
         }
         return ServerResponse.ok().bodyValueAndAwait("feed channel")
     }
 
     suspend fun consumeChannel(request: ServerRequest): ServerResponse {
-      val flow = channel.asFlow()
+      val flow = channel
         return ServerResponse.ok().sse().bodyAndAwait(flow)
     }
 
@@ -134,7 +134,7 @@ class ProductsHandler(
                 emit(it.toString())
             }
             take()
-            channel.consumeEach {
+            channel.onEach {
                 println("notification")
                 take()
             }

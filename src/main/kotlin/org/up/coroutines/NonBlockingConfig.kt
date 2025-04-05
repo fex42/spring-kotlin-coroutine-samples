@@ -10,9 +10,9 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.core.io.ClassPathResource
 import org.springframework.data.r2dbc.config.AbstractR2dbcConfiguration
-import org.springframework.data.r2dbc.connectionfactory.init.CompositeDatabasePopulator
-import org.springframework.data.r2dbc.connectionfactory.init.ConnectionFactoryInitializer
-import org.springframework.data.r2dbc.connectionfactory.init.ResourceDatabasePopulator
+import org.springframework.r2dbc.connection.init.CompositeDatabasePopulator
+import org.springframework.r2dbc.connection.init.ConnectionFactoryInitializer
+import org.springframework.r2dbc.connection.init.ResourceDatabasePopulator
 import org.springframework.stereotype.Component
 import org.springframework.web.reactive.config.EnableWebFlux
 import org.springframework.web.reactive.config.WebFluxConfigurer
@@ -27,8 +27,8 @@ import reactor.core.publisher.Operators
 import reactor.util.context.Context
 import java.util.*
 import java.util.stream.Collectors
-import javax.annotation.PostConstruct
-import javax.annotation.PreDestroy
+import jakarta.annotation.PostConstruct
+import jakarta.annotation.PreDestroy
 
 
 @Configuration
@@ -80,7 +80,8 @@ class MdcWebFilter : WebFilter {
         val reqId = UUID.randomUUID().toString().replace("-", "").take(10)
         MDC.put(MDC_REQUEST_ID, reqId)
         //println("set: " + MDC.get(MDC_REQUEST_ID))
-        return webFilterChain.filter(serverWebExchange).subscriberContext{it.put(MDC_REQUEST_ID, reqId)}
+        val x = webFilterChain.filter(serverWebExchange)
+        return x.contextWrite { it.put(MDC_REQUEST_ID, reqId)}
     }
     companion object {
         const val MDC_REQUEST_ID = "req-id"

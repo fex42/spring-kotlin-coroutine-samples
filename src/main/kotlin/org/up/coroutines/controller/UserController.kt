@@ -7,8 +7,6 @@ import org.up.coroutines.repository.AvatarService
 import org.up.coroutines.repository.EnrollmentService
 import org.up.coroutines.repository.UserRepository
 import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.BroadcastChannel
-import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.slf4j.MDCContext
@@ -18,7 +16,9 @@ import kotlinx.coroutines.flow.*
 import org.springframework.http.HttpStatus
 import org.springframework.http.codec.ServerSentEvent
 import org.springframework.web.server.ResponseStatusException
-import javax.transaction.Transactional
+import jakarta.transaction.Transactional
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.currentCoroutineContext
 
 @RestController
 class UserController(
@@ -52,7 +52,7 @@ class UserController(
         val emailVerified = async { enrollmentService.verifyEmail(user.email, delay) }
         val avatarUrl = async { user.avatarUrl ?: avatarService.randomAvatar(delay).url }
         userRepository.save(user.copy(avatarUrl = avatarUrl.await(), emailVerified = emailVerified.await())).also {
-            channel.send(user.email)
+            channel.emit(user.email)
         }
     }
 
@@ -98,7 +98,7 @@ class UserController(
         }
     }
 
-    private val channel = BroadcastChannel<String>(128)
+    private val channel = MutableSharedFlow<String>(0, extraBufferCapacity=128)
 
     @GetMapping("/users/stream", produces = [MediaType.TEXT_EVENT_STREAM_VALUE])
     @ResponseBody
@@ -109,8 +109,10 @@ class UserController(
                 emit(user).also { latestId = user.id!! }
             }
             take()
-            channel.consumeEach { take()
-            channel.cancel()}
+            channel.onEach {
+                it.take(1)
+                currentCoroutineContext().cancel()
+            }
         }
         return userFlow
     }

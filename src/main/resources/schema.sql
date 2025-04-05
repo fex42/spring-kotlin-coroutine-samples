@@ -1,4 +1,4 @@
-create sequence if NOT EXISTS hibernate_sequence start 1 increment 1 cache 20;
+CREATE SEQUENCE IF NOT EXISTS hibernate_sequence START WITH 1 INCREMENT BY 1 CACHE 20;
 
 CREATE TABLE IF NOT EXISTS product (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,

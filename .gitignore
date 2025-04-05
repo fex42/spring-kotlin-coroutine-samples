@@ -1,1 +1,4 @@
 /spring-boot-kotlin.iml
+target/
+.idea/
+log.txt

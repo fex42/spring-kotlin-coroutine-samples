@@ -42,7 +42,7 @@ class ProductControllerCoroutines {
             webClient.get()
               .uri("/products/$id/quantity")
               .accept(APPLICATION_JSON)
-              .awaitExchange().awaitBody<Int>()
+              .retrieve().awaitBody<Int>()
         }
         return ProductStockView(product.await()!!, quantity.await())
     }
